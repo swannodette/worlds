@@ -5,19 +5,30 @@
 ;; Protocols
 
 (defprotocol ISpawn
-  (-spawn [world]))
+  (-spawn! [world]))
 
 (defprotocol IDestroy
-  (-destroy [world]))
+  (-destroy! [world]))
 
 (defprotocol ICommit
-  (-commit [world]))
+  (-commit! [world]))
 
 ;; =============================================================================
 ;; World
 
-(deftype World [value worlds]
+(deftype World [^:mutable state worlds meta validator ^:mutable watches]
   IAtom
+
+  IDeref
+  (-deref [_] state)
+
+  IWatchable
+  (-notify-watches [this oldval newval]
+    )
+  (-add-watch [this key f]
+    )
+  (-remove-watch [this key f]
+    )
 
   IReset
   (-reset! [this old new]
@@ -34,22 +45,22 @@
     )
 
   ISpawn
-  (-spawn [_ world]
-    ()))
+  (-spawn! [_ world]
+    (swap! worlds conj state)))
 
 (defn world
-  ([value] (world value (atom [value])))
-  ([value worlds]
-     (World. value worlds)))
+  ([state & {:as options}] (world state (atom []) options))
+  ([state worlds {:keys [meta validator]}]
+     (World. state worlds meta validator nil)))
 
 ;; =============================================================================
 ;; API
 
-(defn spawn [owner]
-  (-spawn (om/state (om/get-props owner))))
+(defn spawn! [owner]
+  (-spawn! (om/state (om/get-props owner))))
 
-(defn destroy [owner]
-  (-destroy (om/state (om/get-props owner))))
+(defn destroy! [owner]
+  (-destroy! (om/state (om/get-props owner))))
 
 (defn commit [owner]
-  (-commit (om/state (om/get-props owner))))
+  (-commit! (om/state (om/get-props owner))))
