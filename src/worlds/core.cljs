@@ -4,14 +4,11 @@
 ;; =============================================================================
 ;; Protocols
 
-(defprotocol ISpawn
-  (-spawn! [world]))
+(defprotocol ISprout
+  (-sprout! [world]))
 
 (defprotocol IDestroy
   (-destroy! [world]))
-
-(defprotocol ICommit
-  (-commit! [world]))
 
 ;; =============================================================================
 ;; World
@@ -44,9 +41,17 @@
   (-swap! [this f a b xs]
     )
 
-  ISpawn
-  (-spawn! [_ world]
-    (swap! worlds conj state)))
+  ISprout
+  (-sprout! [_]
+    (let [worlds' (if (= (peek worlds) state)
+                    worlds
+                    (conj worlds state))]
+      (reset! worlds worlds')))
+
+  IDestroy
+  (-destroy! [this world]
+    (swap! worlds pop)
+    (reset! this (peek world))))
 
 (defn world
   ([state & {:as options}] (world state (atom []) options))
@@ -56,11 +61,8 @@
 ;; =============================================================================
 ;; API
 
-(defn spawn! [owner]
-  (-spawn! (om/state (om/get-props owner))))
+(defn sprout! [owner]
+  (-sprout! (om/state (om/get-props owner))))
 
 (defn destroy! [owner]
   (-destroy! (om/state (om/get-props owner))))
-
-(defn commit [owner]
-  (-commit! (om/state (om/get-props owner))))
