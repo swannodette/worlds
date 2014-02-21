@@ -13,7 +13,7 @@
 ;; =============================================================================
 ;; World
 
-(deftype World [^:mutable state worlds meta validator ^:mutable watches]
+(deftype World [^:mutable state worlds max meta validator ^:mutable watches]
   IAtom
 
   IDeref
@@ -55,8 +55,9 @@
 
 (defn world
   ([state] (world state [] nil))
-  ([state worlds {:keys [meta validator]}]
-     (World. state (atom worlds) meta validator nil)))
+  ([state worlds max] (world state worlds max))
+  ([state worlds max {:keys [meta validator]}]
+     (World. state (atom worlds) 100 meta validator nil)))
 
 ;; =============================================================================
 ;; API
