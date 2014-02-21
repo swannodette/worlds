@@ -54,9 +54,9 @@
     (reset! this (peek world))))
 
 (defn world
-  ([state & {:as options}] (world state (atom []) options))
+  ([state] (world state [] nil))
   ([state worlds {:keys [meta validator]}]
-     (World. state worlds meta validator nil)))
+     (World. state (atom worlds) meta validator nil)))
 
 ;; =============================================================================
 ;; API
