@@ -21,32 +21,39 @@
 
   IWatchable
   (-notify-watches [this oldval newval]
-    )
+    (doseq [[key f] watches]
+      (f key this oldval newval)))
   (-add-watch [this key f]
-    )
+    (set! watches (assoc watches key f)))
   (-remove-watch [this key f]
-    )
-
+    (set! watches (dissoc watches key)))
+  
   IReset
-  (-reset! [this old new]
-    )
+  (-reset! [this new-value]
+    (when-not (nil? validator)
+      (assert (validator new-value) "Validator rejected reference state"))
+    (let [old-value state]
+      (set! state new-value)
+      (when-not (nil? watches)
+        (-notify-watches this old-value new-value))))
 
   ISwap
   (-swap! [this f]
-    )
+    (-reset! this (f state)))
   (-swap! [this f a]
-    )
+    (-reset! this (f state a)))
   (-swap! [this f a b]
-    )
+    (-reset! this (f state a b)))
   (-swap! [this f a b xs]
-    )
+    (-reset! this (apply f state a b xs)))
 
   ISprout
   (-sprout! [_]
     (let [worlds' (if (= (peek worlds) state)
                     worlds
                     (conj worlds state))]
-      (reset! worlds worlds')))
+      (when-not (identical? worlds worlds')
+        (reset! worlds worlds'))))
 
   IDestroy
   (-destroy! [this world]
