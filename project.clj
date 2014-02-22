@@ -11,8 +11,15 @@
   :plugins [[lein-cljsbuild "1.0.2"]]
 
   :cljsbuild {
-    :builds [{:id "basic"
+    :builds [{:id "test"
               :source-paths ["src" "test"]
+              :compiler {
+                :optimizations :none
+                :output-to "script/test.js"
+                :output-dir "script/out"
+                :source-map true}}
+             {:id "basic"
+              :source-paths ["src"]
               :compiler {
                 :optimizations :none
                 :output-to "examples/basic/main.js"
