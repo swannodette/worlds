@@ -7,6 +7,9 @@
 (defprotocol ISprout
   (-sprout! [world]))
 
+(defprotocol ICommit
+  (-commit! [world]))
+
 (defprotocol IDestroy
   (-destroy! [world]))
 
