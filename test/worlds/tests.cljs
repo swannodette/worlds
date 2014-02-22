@@ -41,6 +41,13 @@
   (let [w (worlds/world {:text "Hello!"})]
     (worlds/-sprout! w)
     (assert (= (:text @w) "Hello!")))
+
+  (let [w (worlds/world {:text "Hello!"})]
+    (worlds/-sprout! w)
+    (swap! w assoc :text "Goodbye!")
+    (assert (= (:text @w) "Goodbye!"))
+    (worlds/-destroy! w)
+    (assert (= (:text @w) "Hello!")))
   )
 
 (run-tests)

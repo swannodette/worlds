@@ -58,9 +58,11 @@
         (reset! worlds worlds'))))
 
   IDestroy
-  (-destroy! [this world]
-    (swap! worlds pop)
-    (reset! this (peek world))))
+  (-destroy! [this]
+    (let [xs @worlds]
+      (when (>= (count xs) 1)
+        (swap! worlds pop)
+        (reset! this (peek xs))))))
 
 (defn world
   ([state] (world state [] nil))
