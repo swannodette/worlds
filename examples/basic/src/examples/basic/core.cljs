@@ -36,6 +36,11 @@
     om/IInitState
     (init-state [_]
       {:editing false})
+    om/IWillUpdate
+    (will-update [_ next-props next-state]
+      (when (and (not (om/get-render-state owner :editing))
+                      (:editing next-state))
+        (worlds/sprout! owner)))
     om/IRenderState
     (render-state [_ {:keys [edit-text editing on-edit]}]
       (let [text (get data edit-key)]
@@ -49,8 +54,8 @@
                                          (== (.-keyCode %) 13))
                                 (end-edit data edit-key text owner on-edit))
                  :onBlur (fn [e]
-                           (when (om/get-state owner :editing)
-                             (end-edit data edit-key text owner on-edit)))})
+                           (om/set-state! owner :editing false)
+                           (worlds/destroy! owner))})
           (dom/button
             #js {:style (display (not editing))
                  :onClick #(om/set-state! owner :editing true)}
