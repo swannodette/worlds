@@ -19,7 +19,7 @@
                 :output-dir "script/out"
                 :source-map true}}
              {:id "basic"
-              :source-paths ["src"]
+              :source-paths ["examples/basic/src"]
               :compiler {
                 :optimizations :none
                 :output-to "examples/basic/main.js"
