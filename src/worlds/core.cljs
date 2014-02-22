@@ -62,8 +62,8 @@
 
 (defn world
   ([state] (world state [] nil))
-  ([state worlds max] (world state worlds max))
-  ([state worlds max {:keys [meta validator]}]
+  ([state worlds max] (world state worlds max nil))
+  ([state worlds max & {:keys [meta validator]}]
      (World. state (atom worlds) 100 meta validator nil)))
 
 ;; =============================================================================
