@@ -4,6 +4,8 @@
             [om.dom :as dom :include-macros true]
             [worlds.core :as worlds]))
 
+(enable-console-print!)
+
 ;; =============================================================================
 ;; App State
 
@@ -60,7 +62,7 @@
 (defn app-view [app owner]
   (reify
     om/IRender
-    (-render [_]
+    (render [_]
       (dom/div nil
         (dom/h2 nil (:title app))
         (apply dom/ul nil
