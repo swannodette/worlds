@@ -35,6 +35,12 @@
         (reset! x [k r o n])))
     (swap! w update-in [:foo :bar :baz] + 2 3)
     (assert (= @x [:foo w {:foo {:bar {:baz 1}}} {:foo {:bar {:baz 6}}}])))
+
+  (println "Test -sprout! and -destroy!")
+
+  (let [w (worlds/world {:text "Hello!"})]
+    (worlds/-sprout! w)
+    (assert (= (:text @w) "Hello!")))
   )
 
 (run-tests)

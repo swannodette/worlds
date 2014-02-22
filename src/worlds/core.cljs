@@ -49,9 +49,11 @@
 
   ISprout
   (-sprout! [_]
-    (let [worlds' (if (= (peek worlds) state)
-                    worlds
-                    (conj worlds state))]
+    (let [xs @worlds
+          worlds' (cond
+                    (= (peek xs) state) xs
+                    (>= (count xs) max) (conj (subvec 1 xs) state)
+                    :else (conj xs state))]
       (when-not (identical? worlds worlds')
         (reset! worlds worlds'))))
 
