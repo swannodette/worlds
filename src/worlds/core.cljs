@@ -8,19 +8,24 @@
   (-sprout! [world]))
 
 (defprotocol ICommit
-  (-commit! [world]))
+  (-commit! [world id]))
 
 (defprotocol IDestroy
-  (-destroy! [world]))
+  (-destroy! [world id]))
 
 ;; =============================================================================
 ;; World
 
-(deftype World [^:mutable state worlds max meta validator ^:mutable watches]
+(deftype World [^:mutable state worlds max sprouts meta validator
+                ^:mutable watches]
   IAtom
 
   IDeref
-  (-deref [_] state)
+  (-deref [_]
+    (let [xs @sprouts]
+      (if (pos? (count xs))
+        (reduce (fn [st f] (f st)) state (mapcat vals xs))
+        state)))
 
   IWatchable
   (-notify-watches [this oldval newval]
@@ -50,6 +55,28 @@
   (-swap! [this f a b xs]
     (-reset! this (apply f state a b xs)))
 
+  om/IOmSwap
+  (-om-swap! [this cursor f]
+    (let [id (-> cursor meta ::om/id)]
+      (if (contains? @sprouts id)
+        (swap! sprouts update-in [id] (fnil conj []) f)
+        (swap! this cursor f))))
+  (-om-swap! [this cursor f a]
+    (let [id (-> cursor meta ::om/id)]
+      (if (contains? @sprouts id)
+        (swap! sprouts update-in [id] (fnil conj []) #(f % a))
+        (swap! this cursor f a))))
+  (-om-swap! [this cursor f a b]
+    (let [id (-> cursor meta ::om/id)]
+      (if (contains? @sprouts id)
+        (swap! sprouts update-in [id] (fnil conj []) #(f % a b))
+        (swap! this cursor f a b))))
+  (-om-swap! [this cursor f a b xs]
+    (let [id (-> cursor meta ::om/id)]
+      (if (contains? @sprouts id)
+        (swap! sprouts update-in [id] (fnil conj []) #(apply f % a b xs))
+        (swap! this cursor f a b xs))))
+
   ISprout
   (-sprout! [_]
     (let [xs @worlds
@@ -60,24 +87,32 @@
       (when-not (identical? worlds worlds')
         (reset! worlds worlds'))))
 
+  ICommit
+  (-commit! [_ id]
+    (swap! worlds conj state)
+    (let [fs (get @sprouts id)]
+      (set! state (reduce (fn [s f] (f s)) state fs)))
+    (swap! sprouts dissoc id))
+
   IDestroy
-  (-destroy! [this]
-    (let [xs @worlds]
-      (when (>= (count xs) 1)
-        (swap! worlds pop)
-        (reset! this (peek xs))))))
+  (-destroy! [this id]
+    (swap! sprouts dissoc id)))
 
 (defn world
   ([state] (world state [] nil))
   ([state worlds max] (world state worlds max nil))
   ([state worlds max & {:keys [meta validator]}]
-     (World. state (atom worlds) 100 meta validator nil)))
+     (World. state (atom worlds) 100 (atom {}) meta validator nil)))
 
 ;; =============================================================================
 ;; API
 
-(defn sprout! [owner]
-  (-sprout! (om/state (om/get-props owner))))
+(defn sprout! [owner cursor]
+  (-sprout! (om/state cursor))
+  (vary-meta cursor assoc ::id (om/id owner)))
 
-(defn destroy! [owner]
-  (-destroy! (om/state (om/get-props owner))))
+(defn destroy! [cursor]
+  (-destroy! (om/state cursor) (-> cursor meta ::id)))
+
+(defn commit! [cursor]
+  (-commit! (om/state cursor)))
