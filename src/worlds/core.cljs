@@ -5,7 +5,7 @@
 ;; Protocols
 
 (defprotocol ISprout
-  (-sprout! [world]))
+  (-sprout! [world id]))
 
 (defprotocol ICommit
   (-commit! [world id]))
@@ -103,11 +103,11 @@
 ;; API
 
 (defn sprout! [owner cursor]
-  (-sprout! (om/state cursor))
+  (-sprout! (om/state cursor) (om/id owner))
   (vary-meta cursor assoc ::id (om/id owner)))
 
 (defn destroy! [cursor]
   (-destroy! (om/state cursor) (-> cursor meta ::id)))
 
-(defn commit! [cursor id]
+(defn commit! [cursor]
   (-commit! (om/state cursor) (-> cursor meta ::id)))

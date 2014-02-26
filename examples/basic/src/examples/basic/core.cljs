@@ -67,11 +67,11 @@
   (reify
     om/IRender
     (render [_]
-      (let [data' (om/sprout! owner data)]
+      (let [data' (worlds/sprout! owner data)]
         (om/build view data'
           {:opts (assoc (dissoc opts :view)
-                   :on-commit (fn [& xs] (om/commit! data'))
-                   :on-blur (fn [& xs] (om/destroy! data')))})))))
+                   :on-commit (fn [& xs] (worlds/commit! data'))
+                   :on-blur (fn [& xs] (worlds/destroy! data')))})))))
 
 ;; =============================================================================
 ;; Application
