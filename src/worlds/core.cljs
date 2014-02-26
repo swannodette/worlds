@@ -80,16 +80,18 @@
 
   ICommit
   (-commit! [_ id]
-    (when (contains? @sprouts id)
-      (let [cmds (get @sprouts id)
-            _    (swap! sprouts dissoc id)]
-        (doseq [cmd cmds]
-          (apply om/transact! cmd)))
-      (swap! worlds conj state)))
+    (let [sprouts' @sprouts]
+      (when (contains? sprouts' id)
+        (let [cmds (get sprouts' id)
+              _    (swap! sprouts dissoc id)]
+          (doseq [cmd cmds]
+            (apply om/transact! cmd)))
+        (swap! worlds conj state))))
 
   IDestroy
   (-destroy! [this id]
-    (swap! sprouts dissoc id)))
+    (swap! sprouts dissoc id)
+    (swap! this identity)))
 
 (defn world
   ([state] (world state [] nil))
