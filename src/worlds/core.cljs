@@ -62,7 +62,7 @@
 
   om/IOmSwap
   (-om-swap! [this cursor korks f tag]
-    (let [id (-> (om/value cursor) cljs.core/meta ::om/id)]
+    (let [id (-> (om/value cursor) cljs.core/meta ::id)]
       (if (contains? @sprouts id)
         (do
           (swap! sprouts update-in [id] conj [cursor korks f tag])
