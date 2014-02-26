@@ -29,7 +29,7 @@
                     (if (empty? path)
                       (f st)
                       (update-in st path f))))
-          state (mapcat vals xs))
+          state (mapcat second xs))
         state)))
 
   IWatchable
