@@ -22,42 +22,42 @@
     #js {}
     #js {:display "none"}))
 
-(defn handle-change [e data edit-key owner]
-  (om/transact! data edit-key (fn [_] (.. e -target -value))))
+(defn handle-change [e data edit-key owner cb]
+  (let [text (.. e -target -value)]
+    (om/transact! data edit-key (fn [_] text))
+    (when cb
+      (cb text))))
 
-(defn end-edit [data edit-key text owner cb]
+(defn handle-end-edit [e data edit-key owner cb]
+  (when (and (om/get-state owner :editing)
+             (== (.-keyCode e) 13))
+    (let [text (get @data edit-key)]
+      (om/set-state! owner :editing false)
+      (om/transact! data edit-key (fn [_] text) :update)
+      (when cb
+        (cb text)))))
+
+(defn handle-blur [owner cb]
   (om/set-state! owner :editing false)
-  (om/transact! data edit-key (fn [_] text) :update)
   (when cb
-    (cb text)))
+    (cb)))
 
-(defn editable [data owner {:keys [edit-key] :as opts}]
+(defn editable [data owner {:keys [edit-key on-edit on-commit on-blur] :as opts}]
   (reify
     om/IInitState
     (init-state [_]
       {:editing false})
     om/IRenderState
-    (render-state [_ {:keys [edit-text editing
-                             on-edit on-commit on-blur]}]
+    (render-state [_ {:keys [editing]}]
       (let [text (get data edit-key)]
         (dom/li nil
           (dom/span #js {:style (display (not editing))} text)
           (dom/input
             #js {:style (display editing)
                  :value text
-                 :onChange #(do
-                              (handle-change % data edit-key owner)
-                              (when on-commit
-                                (on-commit text)))
-                 :onKeyPress #(when (and (om/get-state owner :editing)
-                                         (== (.-keyCode %) 13))
-                                (end-edit data edit-key text owner on-edit)
-                                (when on-edit
-                                  (on-edit text)))
-                 :onBlur (fn [e]
-                           (om/set-state! owner :editing false)
-                           (when on-blur
-                             (on-blur)))})
+                 :onChange #(handle-change % data edit-key owner on-edit)
+                 :onKeyPress #(handle-end-edit % data edit-key owner on-commit)
+                 :onBlur (fn [e] (handle-blur owner on-blur))})
           (dom/button
             #js {:style (display (not editing))
                  :onClick #(om/set-state! owner :editing true)}
@@ -69,9 +69,9 @@
     (render [_]
       (let [data' (om/sprout! owner data)]
         (om/build view data'
-          {:opts (dissoc opts :view)
-           :init-state {:on-commit (fn [& xs] (om/commit! data'))
-                        :on-blur (fn [& xs] (om/destroy! data'))}})))))
+          {:opts (assoc (dissoc opts :view)
+                   :on-commit (fn [& xs] (om/commit! data'))
+                   :on-blur (fn [& xs] (om/destroy! data')))})))))
 
 ;; =============================================================================
 ;; Application
