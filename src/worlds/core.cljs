@@ -24,7 +24,12 @@
   (-deref [_]
     (let [xs @sprouts]
       (if (pos? (count xs))
-        (reduce (fn [st f] (f st)) state (mapcat vals xs))
+        (reduce (fn [st [cursor korks f tag]]
+                  (let [path (into (om/path cursor) korks)]
+                    (if (empty? path)
+                      (f st)
+                      (update-in st path f))))
+          state (mapcat vals xs))
         state)))
 
   IWatchable
@@ -56,43 +61,31 @@
     (-reset! this (apply f state a b xs)))
 
   om/IOmSwap
-  (-om-swap! [this cursor f]
+  (-om-swap! [this cursor korks f tag]
     (let [id (-> cursor meta ::om/id)]
       (if (contains? @sprouts id)
-        (swap! sprouts update-in [id] (fnil conj []) f)
-        (swap! this cursor f))))
-  (-om-swap! [this cursor f a]
-    (let [id (-> cursor meta ::om/id)]
-      (if (contains? @sprouts id)
-        (swap! sprouts update-in [id] (fnil conj []) #(f % a))
-        (swap! this cursor f a))))
-  (-om-swap! [this cursor f a b]
-    (let [id (-> cursor meta ::om/id)]
-      (if (contains? @sprouts id)
-        (swap! sprouts update-in [id] (fnil conj []) #(f % a b))
-        (swap! this cursor f a b))))
-  (-om-swap! [this cursor f a b xs]
-    (let [id (-> cursor meta ::om/id)]
-      (if (contains? @sprouts id)
-        (swap! sprouts update-in [id] (fnil conj []) #(apply f % a b xs))
-        (swap! this cursor f a b xs))))
+        (do
+          (swap! sprouts update-in [id] conj [cursor korks f tag])
+          (swap! this identity)
+          ::om/defer)
+        (let [path (into (om/path cursor) korks)]
+          (if (empty? path)
+            (swap! this f)
+            (swap! this update-in path f))))))
 
   ISprout
-  (-sprout! [_]
-    (let [xs @worlds
-          worlds' (cond
-                    (= (peek xs) state) xs
-                    (>= (count xs) max) (conj (subvec 1 xs) state)
-                    :else (conj xs state))]
-      (when-not (identical? worlds worlds')
-        (reset! worlds worlds'))))
+  (-sprout! [_ id]
+    (when-not (contains? @sprouts id)
+      (swap! sprouts assoc id [])))
 
   ICommit
   (-commit! [_ id]
-    (swap! worlds conj state)
-    (let [fs (get @sprouts id)]
-      (set! state (reduce (fn [s f] (f s)) state fs)))
-    (swap! sprouts dissoc id))
+    (when (contains? @sprouts id)
+      (let [cmds (get @sprouts id)
+            _    (swap! sprouts dissoc id)]
+        (doseq [cmd cmds]
+          (apply om/transact! cmd)))
+      (swap! worlds conj state)))
 
   IDestroy
   (-destroy! [this id]
@@ -114,5 +107,5 @@
 (defn destroy! [cursor]
   (-destroy! (om/state cursor) (-> cursor meta ::id)))
 
-(defn commit! [cursor]
-  (-commit! (om/state cursor)))
+(defn commit! [cursor id]
+  (-commit! (om/state cursor) (-> cursor meta ::id)))

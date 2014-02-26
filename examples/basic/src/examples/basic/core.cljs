@@ -36,30 +36,42 @@
     om/IInitState
     (init-state [_]
       {:editing false})
-    om/IWillUpdate
-    (will-update [_ next-props next-state]
-      (when (and (not (om/get-render-state owner :editing))
-                      (:editing next-state))
-        (worlds/sprout! owner)))
     om/IRenderState
-    (render-state [_ {:keys [edit-text editing on-edit]}]
+    (render-state [_ {:keys [edit-text editing
+                             on-edit on-commit on-blur]}]
       (let [text (get data edit-key)]
         (dom/li nil
           (dom/span #js {:style (display (not editing))} text)
           (dom/input
             #js {:style (display editing)
                  :value text
-                 :onChange #(handle-change % data edit-key owner)
+                 :onChange #(do
+                              (handle-change % data edit-key owner)
+                              (when on-commit
+                                (on-commit text)))
                  :onKeyPress #(when (and (om/get-state owner :editing)
                                          (== (.-keyCode %) 13))
-                                (end-edit data edit-key text owner on-edit))
+                                (end-edit data edit-key text owner on-edit)
+                                (when on-edit
+                                  (on-edit text)))
                  :onBlur (fn [e]
                            (om/set-state! owner :editing false)
-                           (worlds/destroy! owner))})
+                           (when on-blur
+                             (on-blur)))})
           (dom/button
             #js {:style (display (not editing))
                  :onClick #(om/set-state! owner :editing true)}
             "Edit"))))))
+
+(defn wrap-editable [data owner {:keys [view]}]
+  (reify
+    om/IRender
+    (render [_]
+      (let [data' (om/sprout! owner data)]
+        (om/build view data'
+          {:init-state
+           {:on-commit (fn [& args] (om/commit! data'))
+            :on-blur (fn [& args] (om/destroy! data'))}})))))
 
 ;; =============================================================================
 ;; Application
@@ -71,7 +83,8 @@
       (dom/div nil
         (dom/h2 nil (:title app))
         (apply dom/ul nil
-          (om/build-all editable (:animals app)
-            {:opts {:edit-key :name}}))))))
+          (om/build-all wrap-editable (:animals app)
+            {:opts {:view editable
+                    :edit-key :name}}))))))
 
 (om/root app-view app-state {:target (gdom/getElement "app")})

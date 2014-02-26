@@ -8,6 +8,8 @@
                  [org.clojure/clojurescript "0.0-2173"]
                  [om "0.5.1-SNAPSHOT"]]
 
+  :source-paths ["src"]
+
   :plugins [[lein-cljsbuild "1.0.2"]]
 
   :cljsbuild {
@@ -19,7 +21,7 @@
                 :output-dir "script/out"
                 :source-map true}}
              {:id "basic"
-              :source-paths ["examples/basic/src"]
+              :source-paths ["src" "examples/basic/src"]
               :compiler {
                 :optimizations :none
                 :output-to "examples/basic/main.js"
