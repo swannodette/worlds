@@ -63,15 +63,15 @@
                  :onClick #(om/set-state! owner :editing true)}
             "Edit"))))))
 
-(defn wrap-editable [data owner {:keys [view]}]
+(defn wrap-editable [data owner {:keys [view] :as opts}]
   (reify
     om/IRender
     (render [_]
       (let [data' (om/sprout! owner data)]
         (om/build view data'
-          {:init-state
-           {:on-commit (fn [& args] (om/commit! data'))
-            :on-blur (fn [& args] (om/destroy! data'))}})))))
+          {:opts (dissoc opts :view)
+           :init-state {:on-commit (fn [& xs] (om/commit! data'))
+                        :on-blur (fn [& xs] (om/destroy! data'))}})))))
 
 ;; =============================================================================
 ;; Application
