@@ -16,6 +16,13 @@
 ;; =============================================================================
 ;; World
 
+(defn ^:private apply-fs [c fs]
+  (reduce (fn [x [korks f tag]]
+            (if (empty? korks)
+              (f x)
+              (update-in x korks f)))
+    c fs))
+
 (deftype World [^:mutable state worlds max sprouts meta validator
                 ^:mutable watches]
   IAtom
@@ -71,14 +78,12 @@
     (let [id (om/id owner)]
       (when-not (contains? @sprouts id)
         (swap! sprouts assoc id []))
-      (let [ret (vary-meta
-                  (reduce (fn [x [korks f tag]]
-                            (if (empty? korks)
-                              (f x)
-                              (update-in x korks f)))
-                    cursor (get @sprouts id))
-                  assoc ::id id)]
-        ret)))
+      (let [fs (get @sprouts id)
+            ret (vary-meta (apply-fs cursor fs) assoc ::id id)]
+        (specify! ret
+          IDeref
+          (-deref [_]
+            (apply-fs (get-in @(om/state cursor) (om/path cursor)) fs))))))
 
   ICommit
   (-commit! [_ cursor]

@@ -31,7 +31,7 @@
 (defn handle-end-edit [e data edit-key owner cb]
   (when (and (om/get-state owner :editing)
              (== (.-keyCode e) 13))
-    (let [text (get (om/value data) edit-key)]
+    (let [text (get @data edit-key)]
       (om/set-state! owner :editing false)
       (om/transact! data edit-key (fn [_] text) :update)
       (when cb
