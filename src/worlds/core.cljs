@@ -5,13 +5,13 @@
 ;; Protocols
 
 (defprotocol ISprout
-  (-sprout! [world id]))
+  (-sprout! [world owner cursor]))
 
 (defprotocol ICommit
-  (-commit! [world id]))
+  (-commit! [world cursor]))
 
 (defprotocol IDestroy
-  (-destroy! [world id]))
+  (-destroy! [world cursor]))
 
 ;; =============================================================================
 ;; World
@@ -21,16 +21,7 @@
   IAtom
 
   IDeref
-  (-deref [_]
-    (let [xs @sprouts]
-      (if (pos? (count xs))
-        (reduce (fn [st [cursor korks f tag]]
-                  (let [path (into (om/path cursor) korks)]
-                    (if (empty? path)
-                      (f st)
-                      (update-in st path f))))
-          state (mapcat second xs))
-        state)))
+  (-deref [_] state)
 
   IWatchable
   (-notify-watches [this oldval newval]
@@ -64,9 +55,11 @@
   (-om-swap! [this cursor korks f tag]
     (let [id (-> (om/value cursor) cljs.core/meta ::id)]
       (if (contains? @sprouts id)
-        (do
-          (swap! sprouts update-in [id] conj [cursor korks f tag])
-          (swap! this identity)
+        (let [cpath (om/path cursor)]
+          (swap! sprouts update-in [id] conj [korks f tag])
+          (if (empty? cpath)
+            (swap! this clone)
+            (swap! this update-in cpath clone))
           ::om/defer)
         (let [path (into (om/path cursor) korks)]
           (if (empty? path)
@@ -74,23 +67,33 @@
             (swap! this update-in path f))))))
 
   ISprout
-  (-sprout! [_ id]
-    (when-not (contains? @sprouts id)
-      (swap! sprouts assoc id [])))
+  (-sprout! [_ owner cursor]
+    (let [id (om/id owner)]
+      (when-not (contains? @sprouts id)
+        (swap! sprouts assoc id []))
+      (let [ret (vary-meta
+                  (reduce (fn [x [korks f tag]]
+                            (if (empty? korks)
+                              (f x)
+                              (update-in x korks f)))
+                    cursor (get @sprouts id))
+                  assoc ::id id)]
+        ret)))
 
   ICommit
-  (-commit! [_ id]
-    (let [sprouts' @sprouts]
+  (-commit! [_ cursor]
+    (let [id (-> cursor om/value cljs.core/meta ::id)
+          sprouts' @sprouts]
       (when (contains? sprouts' id)
         (let [cmds (get sprouts' id)
               _    (swap! sprouts dissoc id)]
           (doseq [cmd cmds]
-            (apply om/transact! cmd)))
+            (apply om/transact! (cons cursor cmd))))
         (swap! worlds conj state))))
 
   IDestroy
-  (-destroy! [this id]
-    (swap! sprouts dissoc id)
+  (-destroy! [this cursor]
+    (swap! sprouts dissoc (-> cursor om/value cljs.core/meta ::id))
     (swap! this identity)))
 
 (defn world
@@ -103,11 +106,10 @@
 ;; API
 
 (defn sprout! [owner cursor]
-  (-sprout! (om/state cursor) (om/id owner))
-  (vary-meta cursor assoc ::id (om/id owner)))
+  (-sprout! (om/state cursor) owner cursor))
 
 (defn destroy! [cursor]
-  (-destroy! (om/state cursor) (-> (om/value cursor) meta ::id)))
+  (-destroy! (om/state cursor) cursor))
 
 (defn commit! [cursor]
-  (-commit! (om/state cursor) (-> (om/value cursor) meta ::id)))
+  (-commit! (om/state cursor) cursor))

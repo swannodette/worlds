@@ -31,7 +31,7 @@
 (defn handle-end-edit [e data edit-key owner cb]
   (when (and (om/get-state owner :editing)
              (== (.-keyCode e) 13))
-    (let [text (get @data edit-key)]
+    (let [text (get (om/value data) edit-key)]
       (om/set-state! owner :editing false)
       (om/transact! data edit-key (fn [_] text) :update)
       (when cb
@@ -87,4 +87,7 @@
             {:opts {:view editable
                     :edit-key :name}}))))))
 
-(om/root app-view app-state {:target (gdom/getElement "app")})
+(om/root app-view app-state
+  {:target (gdom/getElement "app")
+   :tx-listen (fn [tx-data _]
+                (println tx-data))})
